@@ -1101,8 +1101,8 @@ class HistoricalChanges(ModelTypeHint):
         new_values = model_to_dict(self, fields=fields)
 
         for field in fields:
-            old_value = old_values[field]
-            new_value = new_values[field]
+            old_value = None if old_history.history_type == "-" else old_values[field]
+            new_value = None if self.history_type == "-" else new_values[field]
 
             if old_value != new_value:
                 field_meta = self._meta.get_field(field)

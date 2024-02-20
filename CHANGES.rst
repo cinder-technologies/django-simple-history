@@ -3,6 +3,7 @@ Changes
 
 Unreleased
 ----------
+- Fixed `diff_against` to work with deleted objects (gh-1312)
 
 3.10.1 (2025-06-20)
 -------------------

@@ -30,6 +30,11 @@ from simple_history.signals import (
     pre_create_historical_m2m_records,
     pre_create_historical_record,
 )
+from simple_history.tests.tests.utils import (
+    database_router_override_settings,
+    database_router_override_settings_history_in_diff_db,
+    middleware_override_settings,
+)
 from simple_history.utils import get_history_model_for_model, update_change_reason
 
 from ..external.models import (
@@ -68,7 +73,6 @@ from ..models import (
     HistoricalCustomFKError,
     HistoricalPoll,
     HistoricalPollWithHistoricalIPAddress,
-    HistoricalPollWithManyToMany_places,
     HistoricalState,
     InheritedRestaurant,
     Library,
@@ -945,6 +949,33 @@ class HistoricalRecordsTest(HistoricalTestCase):
         with self.assertNumQueries(0):
             new_record.diff_against(old_record, excluded_fields=["unknown_field"])
 
+    def test_history_with_deletion_record(self):
+        question = "what's up?"
+        p = Poll.objects.create(question=question, pub_date=today)
+        poll_pk = p.pk
+        new_record = p.history.first()
+        p.delete()
+
+        deletion_record = HistoricalPoll.objects.get(id=poll_pk, history_type="-")
+
+        with self.assertNumQueries(0):
+            delta = new_record.diff_against(
+                deletion_record, included_fields=["question"]
+            )
+            self.assertEqual(delta.changed_fields, ["question"])
+            self.assertEqual(len(delta.changes), 1)
+            self.assertEqual(delta.changes[0].new, question)
+            self.assertEqual(delta.changes[0].old, None)
+
+        with self.assertNumQueries(0):
+            delta = deletion_record.diff_against(
+                new_record, included_fields=["question"]
+            )
+            self.assertEqual(delta.changed_fields, ["question"])
+            self.assertEqual(len(delta.changes), 1)
+            self.assertEqual(delta.changes[0].new, None)
+            self.assertEqual(delta.changes[0].old, question)
+
     def test_delete_with_deferred_fields(self):
         Poll.objects.create(question="what's up bro?", pub_date=today)
         Poll.objects.create(question="what's up sis?", pub_date=today)
@@ -992,6 +1023,33 @@ class HistoricalRecordsTest(HistoricalTestCase):
             ),
             {"Question 1"},
         )
+
+    def test_history_with_deletion_record(self):
+        question = "what's up?"
+        p = Poll.objects.create(question=question, pub_date=today)
+        poll_pk = p.pk
+        new_record = p.history.first()
+        p.delete()
+
+        deletion_record = HistoricalPoll.objects.get(id=poll_pk, history_type="-")
+
+        with self.assertNumQueries(0):
+            delta = new_record.diff_against(
+                deletion_record, included_fields=["question"]
+            )
+            self.assertEqual(delta.changed_fields, ["question"])
+            self.assertEqual(len(delta.changes), 1)
+            self.assertEqual(delta.changes[0].new, question)
+            self.assertEqual(delta.changes[0].old, None)
+
+        with self.assertNumQueries(0):
+            delta = deletion_record.diff_against(
+                new_record, included_fields=["question"]
+            )
+            self.assertEqual(delta.changed_fields, ["question"])
+            self.assertEqual(len(delta.changes), 1)
+            self.assertEqual(delta.changes[0].new, None)
+            self.assertEqual(delta.changes[0].old, question)
 
 
 class GetPrevRecordAndNextRecordTestCase(TestCase):
